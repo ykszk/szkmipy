@@ -1,5 +1,5 @@
 .DS_Store
-docs/source/modules
+src/szkmipy/_version.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
