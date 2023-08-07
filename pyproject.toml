@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "szkmipy"
+description = "My python packages for medical image"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Yuki SUZUKI", email = "y-suzuki@radiol.med.osaka-u.ac.jp" },
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dynamic = ["version"]
+
+[tool.setuptools_scm]
+write_to = "src/szkmipy/_version.py"
+
+[tool.setuptools.dynamic]
+version = { attr = "szkmipy.version" }
+
+[project.urls]
+"Homepage" = "https://github.com/ykszk/szkmipy"
+"Repo" = "https://github.com/ykszk/szkmipy"
+
+[tool.setuptools]
+packages = ["szkmipy"]
+package-dir = { "" = "src" }
