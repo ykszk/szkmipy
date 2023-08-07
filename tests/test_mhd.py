@@ -40,7 +40,7 @@ class TestMhd(unittest.TestCase):
 
     def test_multi_channel(self):
         filepath = self.temp_path / 'tmp.mha'
-        size = [16, 8, 32, 3]
+        size = (16, 8, 32, 3)
         data = np.random.rand(*size)
         mhd.write(filepath, data, {'ElementNumberOfChannels': size[-1]})
         data_read, header = mhd.read(filepath)

@@ -57,11 +57,11 @@ def crop(arr: np.ndarray, bbox: BBox, margin: Union[int, npt.ArrayLike]=0) -> np
     bmin = bbox[0]
     bmax = bbox[1]
     if hasattr(margin, '__len__'):
-        margin = np.array(margin)
+        v_margin = np.array(margin)
     else:
-        margin = np.repeat(margin, len(bmin))
-    bmin = np.maximum(0, bmin - margin)
-    bmax = np.minimum(np.array(arr.shape), bmax + (margin + 1))
+        v_margin = np.repeat(margin, len(bmin))
+    bmin = np.maximum(0, bmin - v_margin)
+    bmax = np.minimum(np.array(arr.shape), bmax + (v_margin + 1))
     a = arr[tuple([slice(bmin[i], bmax[i]) for i in range(len(bmin))])]
     return a
 

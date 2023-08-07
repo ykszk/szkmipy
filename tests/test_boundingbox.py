@@ -1,5 +1,5 @@
 import unittest
-import boundingbox as bb
+import szkmipy.boundingbox as bb
 import numpy as np
 from numpy import testing
 
