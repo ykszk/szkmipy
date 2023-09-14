@@ -95,6 +95,16 @@ class TestMhd(unittest.TestCase):
                 testing.assert_array_equal(data, data_read)
                 del data_read
 
+    def test_iterator(self):
+        for filename in ['tmp.mhd', 'tmp.mha']:
+            filepath = self.temp_path / filename
+            for data in self.data_list:
+                for compression in [False, True]:
+                    mhd.write(filepath, data, {'CompressedData': compression})
+                    iter = mhd.read_iterator(filepath)[0]
+                    for data_orig, data_read in zip(data, iter):
+                        testing.assert_array_equal(data_orig, data_read)
+
 
 if __name__ == "__main__":
     unittest.main()

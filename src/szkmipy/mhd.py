@@ -2,7 +2,7 @@
 Read/Write Meta Image
 """
 
-from typing import Dict, Tuple, Union, Any
+from typing import Dict, Tuple, Union, Any, List, Iterator
 import re
 from pathlib import Path
 import zlib
@@ -99,6 +99,9 @@ def read_header(filename: Union[Path, str],
 
 
 def _get_dim(header: Dict[str, Any]):
+    '''
+    return dim in xyz order
+    '''
     dim = header['DimSize']
     if ('ElementNumberOfChannels' in header):
         dim = [header['ElementNumberOfChannels']] + dim
@@ -323,3 +326,119 @@ def reorient(volume: np.ndarray, header: Dict[str, Any]):
         if ip < 0:
             volume = np.flip(volume, axis=i)
     return volume
+
+
+class ImageIterator:
+
+    def __init__(self, filename: Union[str, Path], shape: List[int],
+                 dtype: np.dtype, seek_size):
+        self.filename = filename
+        self.shape = shape
+        self.dtype = dtype
+        self.seek_size = seek_size
+        self.size_per_image = int(np.prod(shape[1:])) * int(dtype.itemsize)
+        self.i = 0
+
+    def __iter__(self) -> Iterator[np.ndarray]:
+        return self
+
+    def __next__(self):
+        if self.i >= self.shape[0]:
+            raise StopIteration()
+        data = bytearray(self.size_per_image)
+        with open(self.filename, 'rb') as f:
+            f.seek(self.seek_size + self.i * self.size_per_image)
+            f.readinto(data)
+        self.i = self.i + 1
+        arr = np.frombuffer(data, dtype=self.dtype)
+        arr = np.reshape(arr, self.shape[1:], order='C')
+        try:
+            arr.setflags(write=True)
+        except Exception:
+            pass
+        return arr
+
+
+class CompressedImageIterator:
+
+    def __init__(self, filename: Union[str, Path], shape: List[int],
+                 dtype: np.dtype, seek_size):
+        self.filename = filename
+        self.shape = shape
+        self.dtype = dtype
+        self.size_per_image = int(np.prod(shape[1:])) * int(dtype.itemsize)
+        self.i = 0
+        with open(filename, 'rb') as f:
+            f.seek(seek_size)
+            self.compressed_bytes = f.read()
+        self.dobj = zlib.decompressobj()
+
+    def __iter__(self) -> Iterator[np.ndarray]:
+        return self
+
+    def __next__(self):
+        if self.i >= self.shape[0]:
+            raise StopIteration()
+        data = self.dobj.decompress(self.compressed_bytes,
+                                    max_length=self.size_per_image)
+        self.compressed_bytes = self.dobj.unconsumed_tail
+        self.i = self.i + 1
+        arr = np.frombuffer(data, dtype=self.dtype)
+        arr = np.reshape(arr, self.shape[1:], order='C')
+        try:
+            arr.setflags(write=True)
+        except Exception:
+            pass
+        return arr
+
+
+def read_iterator(
+        filename: Union[Path, str],
+        encoding='ascii') -> Tuple[Iterator[np.ndarray], Dict[str, Any]]:
+    """Read as an iterator that reads one image at a time from ndarray.
+    e.g. if original array is [z,y,x], the iterator returns [y,x] array.
+    For uncompressed data, bytes for one image is allocated per iteration.
+    For compressed data, bytes for the entire compressed data is consumed in addition to the per-iteration consumption.
+
+    :param str filename: Image filename with extension mhd or mha.
+    :return: iterator and metadata
+    :rtype: (iterator, dict)
+
+    Examples:
+        >>> import mhd
+        >>> image_iterator, header = mhd.read('filename.mhd')
+        >>> for image in image_iterator:
+        >>>     do_some_stuff(image)
+    """
+    filename = str(filename)
+    header = read_header(filename, encoding)
+    data_is_compressed = 'CompressedData' in header and header['CompressedData']
+    data_filename = header['ElementDataFile']
+    if header['ObjectType'] != 'Image':
+        raise ValueError('ObjectType not "Image" is not supported (yet.)')
+    if data_filename == 'LIST':
+        raise ValueError('ElementDataFile "LIST" is not supported (yet.)')
+    if data_filename == 'LOCAL':  # mha
+        data_filename = filename
+        if data_is_compressed:
+            data_size = header['CompressedDataSize']
+        else:
+            numel = np.prod(_get_dim(header))
+            data_size = int(numel) * int(
+                np.dtype(
+                    _METATYPE2DTYPE_TABLE[header['ElementType']]).itemsize)
+        seek_size = os.path.getsize(filename) - data_size
+    else:  # mhd
+        if not os.path.isabs(data_filename):  # data_filename is relative
+            data_filename = os.path.join(os.path.dirname(filename),
+                                         data_filename)
+        seek_size = 0
+    dim = _get_dim(header)
+    shape = list(reversed(dim))
+    dtype = np.dtype(_METATYPE2DTYPE_TABLE[header['ElementType']])
+    if data_is_compressed:
+        iterator = CompressedImageIterator(data_filename, shape, dtype,
+                                           seek_size)
+    else:
+        iterator = ImageIterator(data_filename, shape, dtype, seek_size)
+    return iterator, header
