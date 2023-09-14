@@ -187,7 +187,7 @@ def read(filename: Union[Path, str],
             decompressed_size = numel * np.dtype(
                 _METATYPE2DTYPE_TABLE[header['ElementType']]).itemsize
             data = pylibdeflate.zlib_decompress(data, decompressed_size)
-        except:
+        except ImportError:
             data = zlib.decompress(data)
             data = bytearray(
                 data)  # TODO: This is copying underlying memory in bytes.
@@ -196,7 +196,7 @@ def read(filename: Union[Path, str],
             import pylibdeflate
             data = pylibdeflate.read_as_bytearray(data_filename, data_size,
                                                   seek_size)
-        except:
+        except ImportError:
             # Not using np.fromfile in order to set writeflag=1 later
             with open(data_filename, 'rb', buffering=0) as f:
                 # Using f.readinto(bytearray) to read binary file into a mutable buffer
@@ -290,7 +290,7 @@ def write(filename: Union[Path, str],
         try:
             import pylibdeflate
             data = pylibdeflate.zlib_compress(data, compression_level)
-        except:
+        except ImportError:
             data = zlib.compress(data, compression_level)
         h['CompressedDataSize'] = str(len(data))
 
