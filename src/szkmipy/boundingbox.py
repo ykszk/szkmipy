@@ -6,14 +6,21 @@ Examples:
     >>> arr = np.array([[1,2,3], [4,5,6], [0, 0, 0]])
     >>> bbox = bb.bbox(arr)
     >>> bbox
-    (array([0, 0]), array([1, 2]))
+    (array([0, 0]), array([2, 3]))
     >>> cropped_arr = bb.crop(arr, bbox, margin=0)
     >>> cropped_arr.shape
     (2, 3)
+    >>> np.array_equal(cropped_arr, bb.trim(arr, margin=0))
+    True
     >>> processed_cropped_arr = cropped_arr ** 2
     >>> processed = bb.uncrop(processed_cropped_arr, arr.shape, bbox, margin=0)
     >>> processed.shape == arr.shape
     True
+    >>> bb.bbox_mask_array(arr)
+    array([[1, 1, 1],
+           [1, 1, 1],
+           [0, 0, 0]], dtype=uint8)
+
 '''
 from typing import Tuple, Union
 
@@ -40,6 +47,7 @@ def bbox(arr: np.ndarray) -> BBox:
                                            if i != d])))[0][[0, -1]]
         for d in range(dim)
     ])
+    bb[:, 1] += 1
     return bb[:, 0], bb[:, 1]
 
 
@@ -61,7 +69,7 @@ def crop(arr: np.ndarray, bbox: BBox, margin: Union[int, npt.ArrayLike]=0) -> np
     else:
         v_margin = np.repeat(margin, len(bmin))
     bmin = np.maximum(0, bmin - v_margin)
-    bmax = np.minimum(np.array(arr.shape), bmax + (v_margin + 1))
+    bmax = np.minimum(np.array(arr.shape), bmax + v_margin)
     a = arr[tuple([slice(bmin[i], bmax[i]) for i in range(len(bmin))])]
     return a
 
@@ -100,7 +108,7 @@ def uncrop(arr: np.ndarray,
         np.ndarray: Uncropped array.
     '''
     start = np.maximum(bbox[0] - margin, 0)
-    end = np.maximum(np.array(original_shape) - bbox[1] - margin - 1, 0)
+    end = np.maximum(np.array(original_shape) - bbox[1] - margin, 0)
     pad_width = np.array((start, end)).T
     return np.pad(arr, pad_width, 'constant', constant_values=constant_values)
 
@@ -112,6 +120,6 @@ def bbox_mask_array(array: np.ndarray, margin: int = 0) -> np.ndarray:
     bbarray = np.zeros(array.shape, dtype=np.uint8)
     bb = bbox(array)
     bbmin = np.clip(bb[0] - margin, 0, None)
-    bbmax = np.clip(bb[1] + 1 + margin, None, bbarray.shape)
-    bbarray[bbmin[0]:bbmax[0], bbmin[1]:bbmax[1], bbmin[2]:bbmax[2]] = 1
+    bbmax = np.clip(bb[1] + margin, None, bbarray.shape)
+    bbarray[tuple([slice(*bb) for bb in zip(bbmin, bbmax)])] = 1
     return bbarray
