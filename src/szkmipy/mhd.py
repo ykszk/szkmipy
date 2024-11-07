@@ -245,8 +245,12 @@ def write(filename: Union[Path, str],
         >>> mhd.write('filename.mhd', nparray, {'ElementNumberOfChannels': nparray.shape[-1]}) # multiple channels
     """
     filename = str(filename)
-    if image.dtype == np.bool8:
-        image = image.astype(np.uint8)
+    try:
+        if image.dtype == np.bool8:
+            image = image.astype(np.uint8)
+    except AttributeError:
+        if image.dtype == np.bool_:
+            image = image.astype(np.uint8)
     header = copy.deepcopy(
         header)  # copy given header because this function mutate it
     # Construct header
@@ -383,6 +387,7 @@ class CompressedImageIterator:
                                     max_length=self.size_per_image)
         self.compressed_bytes = self.dobj.unconsumed_tail
         self.i = self.i + 1
+        data = bytearray(data)
         arr = np.frombuffer(data, dtype=self.dtype)
         arr = np.reshape(arr, self.shape[1:], order='C')
         try:
