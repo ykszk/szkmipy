@@ -19,6 +19,8 @@ classifiers = [
 
 dynamic = ["version"]
 
+dependencies = ["deflate", "zstandard"]
+
 [tool.setuptools_scm]
 write_to = "src/szkmipy/_version.py"
 

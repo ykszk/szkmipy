@@ -38,6 +38,21 @@ class TestMhd(unittest.TestCase):
                     testing.assert_array_equal(data, data_read)
                     self.assertEqual(compression, header['CompressedData'])
 
+    def test_zstandard(self):
+        filepath = self.temp_path / 'tmp.mha'
+        for data in self.data_list:
+            h = mhd.create_header(data.shape, compress=True, compression_type='zstandard')
+            mhd.write(filepath, data, h)
+            data_read, _header = mhd.read(filepath)
+            testing.assert_array_equal(data, data_read)
+
+    def test_unknown_compression(self):
+        filepath = self.temp_path / 'tmp.mha'
+        data = self.data_list[0]
+        with self.assertRaises(ValueError):
+            h = mhd.create_header(data.shape, compress=True, compression_type='gzip')
+            mhd.write(filepath, data, h)
+
     def test_multi_channel(self):
         filepath = self.temp_path / 'tmp.mha'
         size = (16, 8, 32, 3)
@@ -105,6 +120,26 @@ class TestMhd(unittest.TestCase):
                     for data_orig, data_read in zip(data, iter):
                         testing.assert_array_equal(data_orig, data_read)
 
+    def test_zstandard_iterator(self):
+        for filename in ['tmp.mhd', 'tmp.mha']:
+            filepath = self.temp_path / filename
+            for data in self.data_list:
+                h = mhd.create_header(data.shape, compress=True, compression_type='zstandard')
+                mhd.write(filepath, data, h)
+                iter = mhd.read_iterator(filepath)[0]
+                for data_orig, data_read in zip(data, iter):
+                    testing.assert_array_equal(data_orig, data_read)
+
+    def test_writer(self):
+        filepath = self.temp_path / 'tmp.mha'
+        for data in self.data_list:
+            for compression in [ True]:
+                h = mhd.create_header(data.shape, compress=compression, compression_type='zstandard')
+                with mhd.Writer(filepath, h, data.ndim, data.dtype) as writer:
+                    for i in range(data.shape[0]):
+                        writer.write(data[i])
+                data_read, header = mhd.read(filepath)
+                testing.assert_array_equal(data, data_read)
 
 if __name__ == "__main__":
     unittest.main()

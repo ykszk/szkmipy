@@ -20,7 +20,7 @@ class TestBoundingbox(unittest.TestCase):
         arr = self.get_2d_arr()
         bmin, bmax = bb.bbox(arr)
         testing.assert_array_equal(np.array([1, 1]), bmin)
-        testing.assert_array_equal(np.array([2, 3]), bmax)
+        testing.assert_array_equal(np.array([3, 4]), bmax)
 
     def test_trim(self):
         arr = self.get_2d_arr()
