@@ -135,7 +135,7 @@ class TestMhd(unittest.TestCase):
         for data in self.data_list:
             for compression in [ True]:
                 h = mhd.create_header(data.shape, compress=compression, compression_type='zstandard')
-                with mhd.Writer(filepath, h, data.ndim, data.dtype) as writer:
+                with mhd.Writer(filepath, h,data.dtype) as writer:
                     for i in range(data.shape[0]):
                         writer.write(data[i])
                 data_read, header = mhd.read(filepath)

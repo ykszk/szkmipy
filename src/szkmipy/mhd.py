@@ -248,6 +248,7 @@ def create_header(
     header = {}
     header["ObjectType"] = "Image"
     header["CompressedData"] = str(compress)
+    header['NDims'] = len(shape)
     if last_dim_is_channel:
         header["ElementNumberOfChannels"] = shape[-1]
         header["DimSize"] = list(reversed(shape[:-1]))
@@ -265,7 +266,7 @@ def create_header(
     return header
 
 if np.__version__ >= "1.24":
-    np_bool8 = np.bool8
+    np_bool8 = np.bool
 else:
     np_bool8 = np.bool_
 
@@ -363,9 +364,8 @@ def write(
 RESERVE_SIZE = 64  # reserve space for compressed data size
 
 class Writer:
-    def __init__(self, filename: Union[Path, str], header: Dict[str, Any], ndim, dtype):
+    def __init__(self, filename: Union[Path, str], header: Dict[str, Any], dtype):
         self.filename = filename
-        header["NDims"] = ndim
         header["ElementType"] = _DTYPE2METATYPE_TABLE[dtype.name]
         self.compress = header["CompressedData"] == "True"
         if Path(filename).suffix == ".mhd":
