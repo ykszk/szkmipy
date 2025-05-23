@@ -265,8 +265,9 @@ def create_header(
         header["CompressionType"] = compression_type
     return header
 
-if np.__version__ >= "1.24":
-    np_bool8 = np.bool
+import packaging.version
+if packaging.version.Version(np.__version__) >= packaging.version.Version("1.24"):
+    np_bool8 = bool
 else:
     np_bool8 = np.bool_
 
@@ -496,6 +497,22 @@ class ZlibIterator:
         self.data = self.decomp_iter.unconsumed_tail
         return data
 
+class ZstandardIterator:
+    def __init__(self, data, window_size: int):
+        self.data = data
+        self.size = window_size
+        self.stream_reader = zstandard.ZstdDecompressor().stream_reader(
+            data
+        )
+
+    def __iter__(self) -> Iterator[np.ndarray]:
+        return self
+
+    def __next__(self):
+        data = self.stream_reader.read(self.size)
+        if not data:
+            raise StopIteration()
+        return data
 
 class CompressedImageIterator:
 
@@ -506,13 +523,11 @@ class CompressedImageIterator:
         self.shape = shape
         self.dtype = dtype
         self.size_per_image = int(np.prod(shape[1:])) * int(dtype.itemsize)
-        self.i = 0
         with open(filename, "rb") as f:
             f.seek(seek_size)
             self.compressed_bytes = f.read()
         if compression_type == 'zstandard':
-            dctx = zstandard.ZstdDecompressor()
-            self.decomp_iter = dctx.read_to_iter(self.compressed_bytes, write_size=self.size_per_image)
+            self.decomp_iter = ZstandardIterator(self.compressed_bytes, self.size_per_image)
         elif compression_type == 'zlib':
             self.decomp_iter = ZlibIterator(self.compressed_bytes, self.size_per_image)
         else:

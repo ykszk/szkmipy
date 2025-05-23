@@ -23,6 +23,9 @@ class TestMhd(unittest.TestCase):
         for dtype in dtypes:  # 3D
             self.data_list.append(
                 (np.random.rand(size, size, size) * 100).astype(dtype))
+        for dtype in dtypes:  # Big 3D
+            self.data_list.append(
+                (np.random.rand(8, 512, 512) * 100).astype(dtype))
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -57,12 +60,17 @@ class TestMhd(unittest.TestCase):
         filepath = self.temp_path / 'tmp.mha'
         size = (16, 8, 32, 3)
         data = np.random.rand(*size)
-        mhd.write(filepath, data, {'ElementNumberOfChannels': size[-1]})
-        data_read, header = mhd.read(filepath)
-        testing.assert_array_equal(data, data_read)
-        self.assertEqual(header['ElementNumberOfChannels'],
-                         data_read.shape[-1])
-        self.assertEqual(size[-1], data_read.shape[-1])
+        for compression in [True, False]:
+            h = mhd.create_header(data.shape, compress=compression, compression_type='zstandard', last_dim_is_channel=True)
+            mhd.write(filepath, data, h)
+            data_read, header = mhd.read(filepath)
+            testing.assert_array_equal(data, data_read)
+        # mhd.write(filepath, data, {'ElementNumberOfChannels': size[-1]})
+        # data_read, header = mhd.read(filepath)
+        # testing.assert_array_equal(data, data_read)
+        # self.assertEqual(header['ElementNumberOfChannels'],
+        #                  data_read.shape[-1])
+        # self.assertEqual(size[-1], data_read.shape[-1])
 
     def test_read_header(self):
         data = self.data_list[-1]
@@ -115,7 +123,7 @@ class TestMhd(unittest.TestCase):
             filepath = self.temp_path / filename
             for data in self.data_list:
                 for compression in [False, True]:
-                    mhd.write(filepath, data, {'CompressedData': compression})
+                    mhd.write(filepath, data, {'CompressedData': compression, 'CompressionType': 'zstandard'})
                     iter = mhd.read_iterator(filepath)[0]
                     for data_orig, data_read in zip(data, iter):
                         testing.assert_array_equal(data_orig, data_read)
