@@ -100,7 +100,7 @@ def read_header(filename: Union[Path, str], encoding: str = "ascii") -> Dict[str
     return header
 
 
-def _get_dim(header: Dict[str, Any]):
+def get_dim(header: Dict[str, Any]):
     """
     return dim in xyz order
     """
@@ -130,7 +130,7 @@ def read_memmap(
     dtype = np.dtype(_METATYPE2DTYPE_TABLE[header["ElementType"]])
     data_filename = header["ElementDataFile"]
     if data_filename == "LOCAL":  # mha
-        numel = np.prod(_get_dim(header))
+        numel = np.prod(get_dim(header))
         data_size = numel * dtype.itemsize
         offset = int(os.path.getsize(filename) - data_size)
         data_filename = filename
@@ -138,7 +138,7 @@ def read_memmap(
         offset = 0
         if not os.path.isabs(data_filename):  # data_filename is relative
             data_filename = os.path.join(os.path.dirname(filename), data_filename)
-    dim = _get_dim(header)
+    dim = get_dim(header)
     return (
         np.memmap(
             data_filename, dtype=dtype, mode="r", shape=tuple(dim[::-1]), offset=offset
@@ -173,7 +173,7 @@ def read(
         if data_is_compressed:
             data_size = header["CompressedDataSize"]
         else:
-            numel = np.prod(_get_dim(header))
+            numel = np.prod(get_dim(header))
             data_size = int(numel) * int(
                 np.dtype(_METATYPE2DTYPE_TABLE[header["ElementType"]]).itemsize
             )
@@ -187,7 +187,7 @@ def read(
         with open(data_filename, "rb", buffering=0) as f:
             f.seek(seek_size)
             data = f.read()
-        numel = int(np.prod(np.array(_get_dim(header))))
+        numel = int(np.prod(np.array(get_dim(header))))
         decompressed_size = (
             numel * np.dtype(_METATYPE2DTYPE_TABLE[header["ElementType"]]).itemsize
         )
@@ -213,7 +213,7 @@ def read(
     data = np.frombuffer(
         data, dtype=np.dtype(_METATYPE2DTYPE_TABLE[header["ElementType"]])
     )
-    dim = _get_dim(header)
+    dim = get_dim(header)
     image = np.reshape(data, list(reversed(dim)), order="C")
     try:
         image.setflags(write=True)
@@ -579,7 +579,7 @@ def read_iterator(
         if data_is_compressed:
             data_size = header["CompressedDataSize"]
         else:
-            numel = np.prod(_get_dim(header))
+            numel = np.prod(get_dim(header))
             data_size = int(numel) * int(
                 np.dtype(_METATYPE2DTYPE_TABLE[header["ElementType"]]).itemsize
             )
@@ -588,7 +588,7 @@ def read_iterator(
         if not os.path.isabs(data_filename):  # data_filename is relative
             data_filename = os.path.join(os.path.dirname(filename), data_filename)
         seek_size = 0
-    dim = _get_dim(header)
+    dim = get_dim(header)
     shape = list(reversed(dim))
     dtype = np.dtype(_METATYPE2DTYPE_TABLE[header["ElementType"]])
     if data_is_compressed:
